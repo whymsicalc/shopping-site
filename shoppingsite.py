@@ -7,17 +7,18 @@ Authors: Joel Burton, Christian Fernandez, Meggie Mahnken, Katie Byers.
 """
 
 from flask import Flask, render_template, redirect, flash, session
+from flask_debugtoolbar import DebugToolbarExtension
 import jinja2
 
 import melons
 
 app = Flask(__name__)
-app.secret_key = "RANDOM KEY STRING"
 
 # A secret key is needed to use Flask sessioning features
 
 app.secret_key = 'this-should-be-something-unguessable'
-
+app.debug = True
+DebugToolbarExtension(app)
 # Normally, if you refer to an undefined variable in a Jinja template,
 # Jinja silently ignores this. This makes debugging difficult, so we'll
 # set an attribute of the Jinja environment that says to make this an
@@ -68,10 +69,23 @@ def show_shopping_cart():
     # - create a list to hold melon objects and a variable to hold the total
     #   cost of the order
     melons_in_cart = session['cart']
-    melon_types_in_cart = melons_in_cart.keys()
-    melon_list = melons.get_all()
-    print(melon_list)
-    print(melon_list[0].price)
+    melon_list = melons.get_all()  #list of all melon instances
+
+    # list of melon objects in cart:
+    melon_objects_in_cart = []
+
+    # total cost of order
+    total_price = 0
+    for melon in melons_in_cart.keys():
+        melon_info = melons.get_by_id(melon)
+        # melon_info.name = melon_info.common_name
+        melon_info.qty = session['cart'][melon]
+        melon_info.total_cost = melon_info.qty * melon_info.price
+        melon_objects_in_cart.append(melon_info)
+        total_price += melon_info.price * session['cart'][melon]
+
+    print(melon_objects_in_cart)
+
     # - loop over the cart dictionary, and for each melon id:
     #    - get the corresponding Melon object
     #    - compute the total cost for that type of melon
@@ -82,9 +96,8 @@ def show_shopping_cart():
     #
     # Make sure your function can also handle the case wherein no cart has
     # been added to the session
- 
 
-    return render_template("cart.html")
+    return render_template("cart.html", melon_objects_in_cart=melon_objects_in_cart, total_price=total_price)
 
 
 @app.route("/add_to_cart/<melon_id>")
